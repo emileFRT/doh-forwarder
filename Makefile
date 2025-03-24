@@ -4,10 +4,13 @@ PREFIX := /usr/local
 .PHONY: build install clean
 
 build:
-	CGO_ENABLED=0 go build -trimpath -o $(BIN)
+	@echo "Building..."
+	@go build -v -ldflags="-s -w" -trimpath -o $(BIN)
 
 install: build
-	install -Dm755 $(BIN) $(PREFIX)/bin/$(BIN)
+	@echo "Installing..."
+	@install -Dm755 $(BIN) $(PREFIX)/bin/$(BIN)
 
 clean:
-	rm -f $(BIN)
+	@echo "Cleaning..."
+	@rm -f $(BIN)
