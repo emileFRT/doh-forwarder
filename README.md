@@ -1,39 +1,108 @@
 # doh-forwarder
 
-This is a simple but resilient pure-go doh resolver that forward local dns request to Doh services.
-Assume this server as work in progress, although usable.
-We loosely tried to stick to the [suckless](https://suckless.org) philosophy.
+A simple but resilient pure-Go DNS-over-HTTPS forwarder that streams local DNS requests to doh any provider(s) supporting wireformat (defaut to quad9).  
+*"Do one thing and do it well"* - we somewhat try to stick with the [suckless](https://suckless.org) philosophy.
+It can be used to bypass internet service provider's dns services, for privacy improvement, added security (quad9 configuration) or (extremely) basic censorship evasion (France's for instance).
 
-## Requirement
+## Features
+- Several DOH endpoints possible
+- Single binary with no external dependencies
+- Quad9 threat intelligence blocking (malware/phishing) by default
+- Small & readable & easily tweakable
 
-Go tooling is required if building from sources.
-The only (pure-go) extra lib is github.com/miekg/dns for handling dns messages.
+## Requirements
+- Go 1.20+ (for building from source)
 
-## How to setup
+## Configuration
+Edit `config.go` to customize before building. Defaults should be sane (quad9 with cloudflare as backup)
 
-- (optional) change config.go to your preferences (default should work)
-- (optional) change $PREFIX in the makefile
-- `make install`
-- redirect dns traffic to the server (`nameserver 127.0.0.1` in /etc/resolv.conf on linux for example)
-- launch doh-forwarder
 
-You might also want to set up a service manager to control the server such as sv or systemd
+## Building & Installation
+```sh
+# 1. Build (produces single binary)
+make
 
-### Usage
+# 2. Install system-wide (default: /usr/local/bin)
+sudo make install
 
-There is a "-v" cli option that will logs queries, answer and errors.
-That option has been imagined to debug and check configurations.
-Keep in mind that some programs bypass local dns.
+# 3. Verify
+which doh-forwarder
+```
 
-### Non goals:
-- caching
-- efficient
-- secure (we allow failback if not blocked by quad9)
-- exhaustive support for all doh services
+## Service Management
 
-### Goals:
-- simple
-- robust
-- usable
-- use quad9 threat inteligence to block malware
-- suckless
+### For runit/sv with logging:
+```bash
+# 1. Create service directory
+sudo mkdir -p /etc/sv/doh-forwarder/{log,env}
+
+# 2. Create run script
+sudo tee /etc/sv/doh-forwarder/run <<EOF
+#!/bin/sh
+exec 2>&1
+exec /usr/local/bin/doh-forwarder
+EOF
+
+# 3. Create log service
+sudo tee /etc/sv/doh-forwarder/log/run <<EOF
+#!/bin/sh
+exec svlogd -tt ./main
+EOF
+
+# 4. Set permissions and enable
+sudo chmod +x /etc/sv/doh-forwarder/run /etc/sv/doh-forwarder/log/run
+sudo ln -s /etc/sv/doh-forwarder /var/service/
+```
+
+### For systemd with journald logging:
+```toml
+# /etc/systemd/system/doh-forwarder.service
+[Unit]
+Description=DNS-over-HTTPS Forwarder
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/doh-forwarder
+Restart=always
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+View logs with:
+```bash
+journalctl -u doh-forwarder -f
+```
+
+## DNS Configuration
+
+Preserve existing resolv.conf entries while adding local forwarder:
+```bash
+# Backup original
+
+sudo cp /etc/resolv.conf /etc/resolv.conf.bak
+
+# Add 127.0.0.1 as first nameserver
+sudo sed -i '1i nameserver 127.0.0.1' /etc/resolv.conf
+
+# Verify (should show 127.0.0.1 first)
+cat /etc/resolv.conf
+```
+
+Example resulting resolv.conf:
+```text
+nameserver 127.0.0.1      # doh-forwarder
+nameserver 192.168.1.1    # Original entries
+nameserver 8.8.8.8
+```
+
+## Notes
+
+- Some programs (Chromium, Java) bypass system DNS
+- NetworkManager may overwrite resolv.conf - consider:  
+    ```bash
+    echo "prepend domain-name-servers 127.0.0.1;" | sudo tee -a /etc/dhcp/dhclient.conf
+    ```
+- Test with `dig +short example.com @127.0.0.1`
+- Test block list with `dig @127.0.0.1 isitblocked.org`

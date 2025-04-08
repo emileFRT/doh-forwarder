@@ -1,16 +1,14 @@
 BIN := doh-forwarder
 PREFIX := /usr/local
+BUILD_FLAGS := -v -ldflags="-s -w" -trimpath 
 
 .PHONY: build install clean
 
 build:
-	@echo "Building..."
-	@go build -v -ldflags="-s -w" -trimpath -o $(BIN)
+	@CGO_ENABLED=0 go build $(BUILD_FLAGS) -o $(BIN)
 
 install: build
-	@echo "Installing..."
 	@install -Dm755 $(BIN) $(PREFIX)/bin/$(BIN)
 
 clean:
-	@echo "Cleaning..."
 	@rm -f $(BIN)
