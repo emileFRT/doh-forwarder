@@ -1,8 +1,8 @@
 # doh-forwarder
 
-A simple but resilient pure-Go DNS-over-HTTPS forwarder that streams local DNS requests to doh any provider(s) supporting wireformat (defaut to quad9).  
-*"Do one thing and do it well"* - we somewhat try to stick with the [suckless](https://suckless.org) philosophy.
-It can be used to bypass internet service provider's dns services, for privacy improvement, added security (quad9 configuration) or (extremely) basic censorship evasion (France's for instance).
+A simple but resilient pure-Go DNS-over-HTTPS forwarder that streams local DNS requests to any doh provider(s) supporting wireformat (defaut to quad9).    
+*"Do one thing and do it well"* - we somewhat try to stick with the [suckless](https://suckless.org) philosophy.  
+It can be used to bypass internet service provider's dns services, for privacy improvement, added security (quad9 configuration).
 
 ## Features
 - Several DOH endpoints possible
@@ -11,10 +11,10 @@ It can be used to bypass internet service provider's dns services, for privacy i
 - Small & readable & easily tweakable
 
 ## Requirements
-- Go 1.20+ (for building from source)
+- Go (for building from source)
 
 ## Configuration
-Edit `config.go` to customize before building. Defaults should be sane (quad9 with cloudflare as backup)
+Edit `config.go` to customize before building. Default should be sane (quad9 with cloudflare as backup)
 
 
 ## Building & Installation
@@ -99,7 +99,7 @@ nameserver 8.8.8.8
 
 ## Notes
 
-- Some programs (Chromium, Java) bypass system DNS
+- Some programs bypass system DNS
 - NetworkManager may overwrite resolv.conf - consider:  
     ```bash
     echo "prepend domain-name-servers 127.0.0.1;" | sudo tee -a /etc/dhcp/dhclient.conf
