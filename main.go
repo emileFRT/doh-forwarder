@@ -7,12 +7,16 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 )
 
 func main() {
 	go ServeDnsUdp()
 	ServeDnsTcp()
 }
+
+var HTTPClient = &http.Client{}
+var logLock = &sync.Mutex{}
 
 func ServeDnsUdp() {
 	pck, err := net.ListenPacket("udp", listenAddr)
@@ -80,24 +84,22 @@ func ServeDnsTcp() {
 
 func dohProcess(msg []byte) io.Reader {
 	for _, endpoint := range dohEndpoints {
-		// Create a new HTTP request
 		req, err := http.NewRequest("POST", endpoint, bytes.NewReader(msg))
 		if err != nil {
 			logErr(err)
 			continue
 		}
-		// Set the appropriate headers for DNS wire format
+
+		// headers for DNS wire format
 		req.Header.Set("Content-Type", "application/dns-message")
 		req.Header.Set("Accept", "application/dns-message")
-		// Send the request
-		client := &http.Client{}
-		resp, err := client.Do(req)
+
+		resp, err := HTTPClient.Do(req) // safe to use concurently
 		if err != nil {
 			logErr(err)
 			continue
 		}
 
-		// Check response status
 		if resp.StatusCode != http.StatusOK {
 			logErr("got http status:", resp.Status, "on endpoint:", endpoint)
 			resp.Body.Close()
@@ -106,10 +108,14 @@ func dohProcess(msg []byte) io.Reader {
 
 		return resp.Body
 	}
-	logErr("no more endpoint to try, fail on request")
+
+	logErr("no more endpoint to try, request failure")
 	return nil
 }
 
 func logErr(msg ...any) {
+	logLock.Lock()
+	defer logLock.Unlock()
+
 	fmt.Fprintln(os.Stderr, msg...)
 }
