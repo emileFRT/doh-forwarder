@@ -2,7 +2,7 @@
 
 A simple but resilient pure-Go DNS-over-HTTPS forwarder that streams local DNS requests to any doh provider(s) supporting wireformat (defaut to quad9).    
 *"Do one thing and do it well"* - we somewhat try to stick with the [suckless](https://suckless.org) philosophy.  
-It can be used to bypass internet service provider's dns services, for privacy improvement, added security (quad9 configuration).
+It can be used to bypass internet service provider's dns services, for privacy improvement, to bypass DNS-based censorship (France 👀), added security (quad9 configuration).
 
 ## Features
 - Several DOH endpoints possible
@@ -14,18 +14,18 @@ It can be used to bypass internet service provider's dns services, for privacy i
 - Go (for building from source)
 
 ## Configuration
-Edit `config.go` to customize before building. Default should be sane (quad9 with cloudflare as backup)
+Edit `config.go` to customize before building. Default should be sane (quad9, no backup).
 
 
 ## Building & Installation
 ```sh
-# 1. Build (produces single binary)
+# build
 make
 
-# 2. Install system-wide (default: /usr/local/bin)
+# install (default: /usr/local/bin)
 sudo make install
 
-# 3. Verify
+# check
 which doh-forwarder
 ```
 
@@ -33,23 +33,23 @@ which doh-forwarder
 
 ### For runit/sv with logging:
 ```bash
-# 1. Create service directory
+# Create service directory
 sudo mkdir -p /etc/sv/doh-forwarder/{log,env}
 
-# 2. Create run script
+# Create run script, change path if needed
 sudo tee /etc/sv/doh-forwarder/run <<EOF
 #!/bin/sh
 exec 2>&1
 exec /usr/local/bin/doh-forwarder
 EOF
 
-# 3. Create log service
+# Create log service
 sudo tee /etc/sv/doh-forwarder/log/run <<EOF
 #!/bin/sh
 exec svlogd -tt ./main
 EOF
 
-# 4. Set permissions and enable
+# Set permissions and enable
 sudo chmod +x /etc/sv/doh-forwarder/run /etc/sv/doh-forwarder/log/run
 sudo ln -s /etc/sv/doh-forwarder /var/service/
 ```
@@ -94,15 +94,15 @@ Example resulting resolv.conf:
 ```text
 nameserver 127.0.0.1      # doh-forwarder
 nameserver 192.168.1.1    # Original entries
-nameserver 8.8.8.8
+nameserver 9.9.9.9
 ```
 
 ## Notes
 
-- Some programs bypass system DNS
+- Some programs bypass system DNS (browsers for instances)
 - NetworkManager may overwrite resolv.conf - consider:  
     ```bash
     echo "prepend domain-name-servers 127.0.0.1;" | sudo tee -a /etc/dhcp/dhclient.conf
     ```
-- Test with `dig +short example.com @127.0.0.1`
+- Test resolutions with `dig +short example.com @127.0.0.1`
 - Test block list with `dig @127.0.0.1 isitblocked.org`
